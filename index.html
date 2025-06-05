@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AI-Powered RFP Question Search</title>
+  <style>
+    body { font-family: sans-serif; padding: 40px; max-width: 800px; margin: auto; }
+    #search-box {
+      width: 100%; padding: 12px; font-size: 16px; margin-bottom: 24px;
+      border: 1px solid #ccc; border-radius: 6px;
+    }
+    .result {
+      margin-bottom: 20px; padding: 16px; border: 1px solid #ddd;
+      border-radius: 6px; background: #f9f9f9;
+    }
+    .result h3 { margin: 0 0 8px; }
+    .result p { margin: 0 0 4px; }
+    .result small { color: #666; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/sentence-transformers"></script>
+</head>
+<body>
+  <h1>AI-Powered RFP Question Search</h1>
+  <input type="text" id="search-box" placeholder="Type your RFP question..." />
+  <div id="results"></div>
+  <script src="script.js"></script>
+</body>
+</html>
