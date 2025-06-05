@@ -1,72 +1,88 @@
-// script.js — full file
-
 let data = [];
-let model = null;
+const container = document.getElementById("results");
+const input = document.getElementById("search-box");
 
 async function loadData() {
-  const response = await fetch("rfp_data_with_real_embeddings.json");
-  data = await response.json();
+  try {
+    const res = await fetch("rfp_data_with_real_embeddings.json");
+    data = await res.json();
+    console.log(`✅ Loaded ${data.length} records.`);
+  } catch (err) {
+    console.error("❌ Failed to load data:", err);
+  }
 }
 
 function cosineSimilarity(a, b) {
-  const dot = a.reduce((sum, val, i) => sum + val * b[i], 0);
-  const normA = Math.sqrt(a.reduce((sum, val) => sum + val * val, 0));
-  const normB = Math.sqrt(b.reduce((sum, val) => sum + val * val, 0));
-  return dot / (normA * normB);
+  const dot = a.reduce((sum, ai, i) => sum + ai * b[i], 0);
+  const magA = Math.sqrt(a.reduce((sum, ai) => sum + ai * ai, 0));
+  const magB = Math.sqrt(b.reduce((sum, bi) => sum + bi * bi, 0));
+  return dot / (magA * magB);
 }
 
-async function getQueryEmbedding(query) {
-  if (!model) {
-    const { pipeline } = await import("https://cdn.jsdelivr.net/npm/@xenova/transformers@2.4.1");
-    model = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2");
-  }
-  const output = await model(query, { pooling: "mean", normalize: true });
-  return output.data;
+function keywordScore(query, text) {
+  return text.toLowerCase().includes(query.toLowerCase()) ? 0.3 : 0;
 }
 
-async function performSearch(query) {
-  const queryEmbedding = await getQueryEmbedding(query);
-  const scoredResults = data.map(item => ({
-    ...item,
-    score: cosineSimilarity(queryEmbedding, item.embedding)
-  }));
+async function embedQuery(query) {
+  const res = await fetch("https://api.openai.com/v1/embeddings", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer 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"
+    },
+    body: JSON.stringify({
+      input: query,
+      model: "text-embedding-3-small"
+    })
+  });
 
-  const results = scoredResults
-    .filter(r => r.score > 0.55) // filter out weak matches
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 5);
-
-  displayResults(results, query);
+  const json = await res.json();
+  return json.data?.[0]?.embedding || null;
 }
 
-function displayResults(results, query) {
-  const resultsDiv = document.getElementById("results");
-  resultsDiv.innerHTML = "";
-
-  if (results.length === 0) {
-    resultsDiv.innerHTML = `<p>No strong matches found for "<strong>${query}</strong>". Try rephrasing your query.</p>`;
+async function search(query) {
+  if (query.length < 4) {
+    container.innerHTML = "";
     return;
   }
 
+  let queryEmbedding = null;
+  try {
+    queryEmbedding = await embedQuery(query);
+  } catch (err) {
+    console.warn("Embedding failed, falling back to keyword only");
+  }
+
+  const results = data
+    .map(entry => {
+      const similarity = queryEmbedding ? cosineSimilarity(queryEmbedding, entry.embedding) : 0;
+      const keyword = keywordScore(query, entry.question);
+      return {
+        ...entry,
+        score: similarity + keyword
+      };
+    })
+    .filter(result => result.score >= 0.25)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 10);
+
+  container.innerHTML = "";
   results.forEach(result => {
     const card = document.createElement("div");
     card.className = "card";
     card.innerHTML = `
-      <h3>${result.question}</h3>
-      <p>${result.answer}</p>
-      <small>Match score: ${result.score.toFixed(3)}</small>
+      <strong>Q:</strong> ${result.question}<br>
+      <strong>Answer:</strong> ${result.answer}<br>
+      <small>Score: ${result.score.toFixed(3)}</small>
     `;
-    resultsDiv.appendChild(card);
+    container.appendChild(card);
   });
 }
 
-document.getElementById("search-box").addEventListener("input", (e) => {
-  const query = e.target.value.trim();
-  if (query.length > 2) {
-    performSearch(query);
-  } else {
-    document.getElementById("results").innerHTML = "";
-  }
+document.addEventListener("DOMContentLoaded", () => {
+  loadData();
+  input.addEventListener("input", e => {
+    const query = e.target.value.trim();
+    search(query);
+  });
 });
-
-loadData();
