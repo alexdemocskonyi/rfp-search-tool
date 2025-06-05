@@ -1,9 +1,11 @@
-let data = [];
+// script.js — full file
 
-async function loadEmbeddings() {
-  const response = await fetch('rfp_data_with_local_embeddings.json');
+let data = [];
+let model = null;
+
+async function loadData() {
+  const response = await fetch("rfp_data_with_real_embeddings.json");
   data = await response.json();
-  console.log(`✅ Loaded ${data.length} entries`);
 }
 
 function cosineSimilarity(a, b) {
@@ -13,45 +15,58 @@ function cosineSimilarity(a, b) {
   return dot / (normA * normB);
 }
 
-async function embedQuery(query) {
-  const model = await window.sentenceTransformers.load('all-MiniLM-L6-v2');
-  const embedding = await model.embed(query);
-  return embedding;
+async function getQueryEmbedding(query) {
+  if (!model) {
+    const { pipeline } = await import("https://cdn.jsdelivr.net/npm/@xenova/transformers@2.4.1");
+    model = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2");
+  }
+  const output = await model(query, { pooling: "mean", normalize: true });
+  return output.data;
 }
 
-async function search(query) {
-  const queryEmbedding = await embedQuery(query);
-  const scored = data.map(item => ({
+async function performSearch(query) {
+  const queryEmbedding = await getQueryEmbedding(query);
+  const scoredResults = data.map(item => ({
     ...item,
     score: cosineSimilarity(queryEmbedding, item.embedding)
   }));
-  scored.sort((a, b) => b.score - a.score);
-  return scored.filter(item => item.score > 0.5).slice(0, 5); // threshold & top 5
+
+  const results = scoredResults
+    .filter(r => r.score > 0.55) // filter out weak matches
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5);
+
+  displayResults(results, query);
 }
 
-function displayResults(results) {
-  const resultsDiv = document.getElementById('results');
-  resultsDiv.innerHTML = '';
+function displayResults(results, query) {
+  const resultsDiv = document.getElementById("results");
+  resultsDiv.innerHTML = "";
+
   if (results.length === 0) {
-    resultsDiv.innerHTML = '<p>No results found.</p>';
+    resultsDiv.innerHTML = `<p>No strong matches found for "<strong>${query}</strong>". Try rephrasing your query.</p>`;
     return;
   }
-  results.forEach(({ question, answer, score }) => {
-    const card = document.createElement('div');
-    card.className = 'card';
-    card.innerHTML = `<strong>${question}</strong><br/><small>Score: ${score.toFixed(3)}</small><br/><p>${answer}</p>`;
+
+  results.forEach(result => {
+    const card = document.createElement("div");
+    card.className = "card";
+    card.innerHTML = `
+      <h3>${result.question}</h3>
+      <p>${result.answer}</p>
+      <small>Match score: ${result.score.toFixed(3)}</small>
+    `;
     resultsDiv.appendChild(card);
   });
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
-  await loadEmbeddings();
-
-  const input = document.getElementById('search-box');
-  input.addEventListener('input', async () => {
-    const query = input.value.trim();
-    if (query.length < 3) return;
-    const results = await search(query);
-    displayResults(results);
-  });
+document.getElementById("search-box").addEventListener("input", (e) => {
+  const query = e.target.value.trim();
+  if (query.length > 2) {
+    performSearch(query);
+  } else {
+    document.getElementById("results").innerHTML = "";
+  }
 });
+
+loadData();
