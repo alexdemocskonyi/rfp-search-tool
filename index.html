@@ -2,36 +2,18 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>AI-Powered RFP Search</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 40px;
-    }
-    #search-box {
-      width: 100%;
-      padding: 12px;
-      font-size: 16px;
-      margin-bottom: 24px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-    }
-    .card {
-      margin-bottom: 20px;
-      padding: 16px;
-      border: 1px solid #ddd;
-      border-radius: 6px;
-      background: #f9f9f9;
-    }
-    .card small {
-      color: #666;
-    }
+    body { font-family: Arial, sans-serif; padding: 40px; }
+    #search-box { width: 100%; padding: 10px; font-size: 16px; }
+    .card { border: 1px solid #ddd; padding: 15px; margin-top: 15px; border-radius: 6px; background: #f9f9f9; }
+    .card h3 { margin: 0 0 10px; }
+    .card small { color: #666; }
   </style>
 </head>
 <body>
-  <h1>AI-Powered RFP Question Search</h1>
-  <input type="text" id="search-box" placeholder="Type your RFP question..." />
+  <h1>AI-Powered RFP Search</h1>
+  <input id="search-box" type="text" placeholder="Type your question..." />
   <div id="results"></div>
   <script src="script.js"></script>
 </body>
